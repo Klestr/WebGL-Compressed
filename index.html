@@ -48,7 +48,6 @@
       var progressBarFull = document.querySelector("#unity-progress-bar-full");
       var fullscreenButton = document.querySelector("#unity-fullscreen-button");
       var unityInstance = null;
-      
 
       loadingBar.style.display = "block";
 
@@ -85,7 +84,11 @@
       enterARButton.addEventListener('click', function (event) {
         unityInstance.Module.WebXR.toggleAR();
       }, false);
+
       enterVRButton.addEventListener('click', function (event) {
+        // Call the Unity method to activate VR mode
+        unityInstance.SendMessage("Manager", "ActivateVRModeFromJS");
+        // Still toggle WebXR VR session (optional, depending on your needs)
         unityInstance.Module.WebXR.toggleVR();
       }, false);
     </script>
