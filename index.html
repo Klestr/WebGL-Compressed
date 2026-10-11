@@ -6,6 +6,8 @@
     <title>Unity Web Player | MetaGraffiti-2026-Desktop</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="stylesheet" href="TemplateData/wallet.css">
+    <script src="wallet-bridge.js"></script>
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
@@ -20,6 +22,16 @@
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
+        <div id="wallet-overlay">
+          <button type="button" id="wallet-chip">
+            <span id="wallet-chip-label">Connect wallet</span>
+          </button>
+          <div id="wallet-panel" hidden>
+            <button type="button" id="wallet-connect-phantom">Phantom</button>
+            <button type="button" id="wallet-connect-solflare">Solflare</button>
+            <button type="button" id="wallet-disconnect" hidden>Disconnect</button>
+          </div>
+        </div>
         <div id="unity-build-title">MetaGraffiti-2026-Desktop</div>
       </div>
     </div>
@@ -52,44 +64,20 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/Acab-Desktop2026Build.loader.js";
+      var loaderUrl = buildUrl + "/WebGL-Compressed.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/Acab-Desktop2026Build.data",
-        frameworkUrl: buildUrl + "/Acab-Desktop2026Build.framework.js",
-        codeUrl: buildUrl + "/Acab-Desktop2026Build.wasm",
+        dataUrl: buildUrl + "/WebGL-Compressed.data",
+        frameworkUrl: buildUrl + "/WebGL-Compressed.framework.js",
+        codeUrl: buildUrl + "/WebGL-Compressed.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "MetaGraffiti-2026-Desktop",
         productVersion: "0.1.0",
         showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
       };
 
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
         var meta = document.createElement('meta');
         meta.name = 'viewport';
         meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
@@ -97,13 +85,8 @@
         document.querySelector("#unity-container").className = "unity-mobile";
         canvas.className = "unity-mobile";
 
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
 
       } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
         canvas.style.width = "960px";
         canvas.style.height = "600px";
       }
@@ -117,6 +100,10 @@
           document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
               }).then((unityInstance) => {
                 document.querySelector("#unity-loading-bar").style.display = "none";
+                window.unityInstance = unityInstance;
+                if (window.MetaGraffWallet) {
+                  window.MetaGraffWallet.setUnityInstance(unityInstance);
+                }
                 document.querySelector("#unity-fullscreen-button").onclick = () => {
                   unityInstance.SetFullscreen(1);
                 };

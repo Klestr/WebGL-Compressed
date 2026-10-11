@@ -1,0 +1,53 @@
+#wallet-overlay {
+  float: right;
+  position: relative;
+  margin: 4px 10px 0 0;
+  font-family: Arial, Helvetica, sans-serif;
+  z-index: 20;
+}
+
+#wallet-chip,
+#wallet-panel button {
+  cursor: pointer;
+  border: 1px solid #3a3a3a;
+  background: #111;
+  color: #f2f2f2;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 6px 10px;
+}
+
+#wallet-chip {
+  min-width: 132px;
+}
+
+#wallet-panel {
+  position: absolute;
+  right: 0;
+  bottom: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 148px;
+  padding: 6px;
+  background: #111;
+  border: 1px solid #3a3a3a;
+}
+
+#wallet-panel[hidden] {
+  display: none;
+}
+
+.unity-mobile #wallet-overlay {
+  display: block;
+  float: none;
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  margin: 0;
+}
+
+.unity-mobile #wallet-panel {
+  bottom: auto;
+  top: 36px;
+}
