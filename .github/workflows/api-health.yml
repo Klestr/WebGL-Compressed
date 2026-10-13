@@ -1,0 +1,42 @@
+name: API health check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET health
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          set +x
+          if [ -z "$API_BASE_URL" ]; then
+            echo "Repository secret API_BASE_URL is not set."
+            echo "Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          base="${API_BASE_URL%/}"
+          tmp="$(mktemp)"
+          code="000"
+          matched=""
+
+          for path in /health /api/health; do
+            code="$(curl -sS -o "$tmp" -w "%{http_code}" --max-time 20 "$base$path" || echo 000)"
+            if [ "$code" = "200" ]; then
+              matched="$path"
+              break
+            fi
+          done
+
+          if [ "$code" != "200" ]; then
+            echo "Health check failed (HTTP $code)"
+            exit 1
+          fi
+
+          echo "Health check passed (HTTP $code, $matched)"
+          python3 -c "import json,sys; json.dump(json.load(open(sys.argv[1],encoding='utf-8')), sys.stdout, indent=2); print()" "$tmp"
