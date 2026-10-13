@@ -1,4 +1,5 @@
-#wallet-overlay {
+#wallet-overlay,
+#api-overlay {
   float: right;
   position: relative;
   margin: 4px 10px 0 0;
@@ -7,7 +8,9 @@
 }
 
 #wallet-chip,
-#wallet-panel button {
+#api-chip,
+#wallet-panel button,
+#api-panel button {
   cursor: pointer;
   border: 1px solid #3a3a3a;
   background: #111;
@@ -17,11 +20,13 @@
   padding: 6px 10px;
 }
 
-#wallet-chip {
+#wallet-chip,
+#api-chip {
   min-width: 132px;
 }
 
-#wallet-panel {
+#wallet-panel,
+#api-panel {
   position: absolute;
   right: 0;
   bottom: 36px;
@@ -34,11 +39,28 @@
   border: 1px solid #3a3a3a;
 }
 
-#wallet-panel[hidden] {
+#api-panel {
+  min-width: 280px;
+  max-width: 420px;
+}
+
+#api-log {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #c8c8c8;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+#wallet-panel[hidden],
+#api-panel[hidden] {
   display: none;
 }
 
-.unity-mobile #wallet-overlay {
+.unity-mobile #wallet-overlay,
+.unity-mobile #api-overlay {
   display: block;
   float: none;
   position: fixed;
@@ -47,7 +69,12 @@
   margin: 0;
 }
 
-.unity-mobile #wallet-panel {
+.unity-mobile #api-overlay {
+  top: 48px;
+}
+
+.unity-mobile #wallet-panel,
+.unity-mobile #api-panel {
   bottom: auto;
   top: 36px;
 }

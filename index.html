@@ -7,6 +7,8 @@
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <link rel="stylesheet" href="TemplateData/wallet.css">
+    <script src="api-config.js"></script>
+    <script src="api-debug.js"></script>
     <script src="wallet-bridge.js"></script>
   </head>
   <body>
@@ -22,6 +24,15 @@
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
+        <div id="api-overlay">
+          <button type="button" id="api-chip">
+            <span id="api-chip-label">API health</span>
+          </button>
+          <div id="api-panel" hidden>
+            <pre id="api-log">Waiting…</pre>
+            <button type="button" id="api-run-health">Run health check</button>
+          </div>
+        </div>
         <div id="wallet-overlay">
           <button type="button" id="wallet-chip">
             <span id="wallet-chip-label">Connect wallet</span>
