@@ -3,6 +3,7 @@
   var unityGameObject = "GalleryWalletBridge";
   var unityInstance = null;
   var eagerAttempted = false;
+  var hostUiOpen = false;
   var connected = {
     walletName: "",
     publicKey: ""
@@ -87,7 +88,7 @@
       publicKey: publicKey
     }));
     updateOverlay();
-    if (global.MetaGraffApi && typeof global.MetaGraffApi.fetchNonce === "function") {
+    if (!hostUiOpen && global.MetaGraffApi && typeof global.MetaGraffApi.fetchNonce === "function") {
       global.MetaGraffApi.fetchNonce(publicKey);
     }
   }
@@ -201,7 +202,7 @@
       warn(walletName, "is not installed");
       sendToUnity("OnWalletError", walletName + " is not installed");
       global.open(url, "_blank");
-      return;
+      return Promise.reject(new Error(walletName + " is not installed"));
     }
 
     notifyPointerDown();
@@ -316,6 +317,162 @@
     updateOverlay();
   }
 
+  function setModalStatus(text) {
+    var status = document.getElementById("wallet-signin-status");
+    if (status) status.textContent = text;
+  }
+
+  function setSignInButtonsDisabled(disabled) {
+    var ids = ["wallet-signin-phantom", "wallet-signin-solflare", "wallet-signin-cancel"];
+    for (var i = 0; i < ids.length; i++) {
+      var button = document.getElementById(ids[i]);
+      if (button) button.disabled = !!disabled;
+    }
+  }
+
+  function exitCanvasFullscreen() {
+    try {
+      var instance = unityInstance || global.unityInstance;
+      if (instance && typeof instance.SetFullscreen === "function") {
+        instance.SetFullscreen(0);
+      }
+    } catch (err) {}
+    var doc = global.document;
+    if (doc.fullscreenElement && typeof doc.exitFullscreen === "function") {
+      doc.exitFullscreen();
+    } else if (doc.webkitFullscreenElement && typeof doc.webkitExitFullscreen === "function") {
+      doc.webkitExitFullscreen();
+    }
+  }
+
+  function setHostUiOpen(open) {
+    hostUiOpen = !!open;
+    var modal = document.getElementById("wallet-signin-modal");
+    if (modal) modal.hidden = !hostUiOpen;
+    notifyPointerDown();
+    sendToUnity(hostUiOpen ? "OnHostUiOpened" : "OnHostUiClosed", "");
+    if (!hostUiOpen) {
+      setSignInButtonsDisabled(false);
+      setModalStatus("Choose Phantom or Solflare. After you approve, you return to the gallery.");
+    }
+  }
+
+  function currentAuthPayload() {
+    var token = "";
+    var expiresIn = 0;
+    if (global.MetaGraffApi) {
+      if (typeof global.MetaGraffApi.getAuthToken === "function") {
+        token = global.MetaGraffApi.getAuthToken() || "";
+      }
+      if (typeof global.MetaGraffApi.getLastAuth === "function") {
+        var auth = global.MetaGraffApi.getLastAuth();
+        if (auth && auth.expiresIn) expiresIn = auth.expiresIn;
+        if (!token && auth && auth.token) token = auth.token;
+      }
+    }
+    return {
+      walletName: connected.walletName || "",
+      publicKey: connected.publicKey || "",
+      token: token,
+      expiresIn: expiresIn
+    };
+  }
+
+  function notifyAuthSignedIn() {
+    var payload = currentAuthPayload();
+    if (!payload.publicKey || !payload.token) return false;
+    sendToUnity("OnAuthSignedIn", JSON.stringify(payload));
+    return true;
+  }
+
+  function requestSignIn() {
+    log("Sign in requested from Unity");
+    if (notifyAuthSignedIn()) return;
+
+    exitCanvasFullscreen();
+    setHostUiOpen(true);
+    setModalStatus("Choose Phantom or Solflare. After you approve, you return to the gallery.");
+  }
+
+  function cancelSignIn() {
+    setHostUiOpen(false);
+    sendToUnity("OnAuthCancelled", "cancelled");
+  }
+
+  function signOut() {
+    setHostUiOpen(false);
+    disconnect();
+    sendToUnity("OnAuthSignedOut", "");
+  }
+
+  function signInWith(walletName) {
+    setSignInButtonsDisabled(true);
+    setModalStatus("Connecting " + walletName + "…");
+    notifyPointerDown();
+
+    return Promise.resolve(connect(walletName)).then(function () {
+      if (!connected.publicKey) throw new Error("Wallet did not connect");
+      if (!global.MetaGraffApi || typeof global.MetaGraffApi.connectWithWallet !== "function") {
+        throw new Error("Auth overlay is missing. Hard-refresh the page.");
+      }
+      setModalStatus("Approve the sign-in message in " + walletName + "…");
+      return global.MetaGraffApi.connectWithWallet();
+    }).then(function (auth) {
+      if (!auth || !auth.token) throw new Error("Sign in did not return a token");
+      log("Signed in", connected.publicKey);
+      notifyAuthSignedIn();
+      setHostUiOpen(false);
+    }).catch(function (err) {
+      var message = err && (err.message || err.code)
+        ? String(err.message || err.code)
+        : String(err);
+      if (err && (err.code === 4001 || err.code === "4001")) {
+        message = "Sign in cancelled";
+      }
+      warn("In-experience sign in failed", message);
+      setSignInButtonsDisabled(false);
+      setModalStatus(message + " Try again, or Cancel to return to the gallery.");
+      sendToUnity("OnAuthError", message);
+    });
+  }
+
+  function bindSignInModal() {
+    var modal = document.getElementById("wallet-signin-modal");
+    if (!modal) return;
+
+    modal.addEventListener("pointerdown", function (event) {
+      event.stopPropagation();
+      notifyPointerDown();
+    });
+
+    var phantomButton = document.getElementById("wallet-signin-phantom");
+    if (phantomButton) {
+      phantomButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        signInWith("phantom");
+      });
+    }
+
+    var solflareButton = document.getElementById("wallet-signin-solflare");
+    if (solflareButton) {
+      solflareButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        signInWith("solflare");
+      });
+    }
+
+    var cancelButton = document.getElementById("wallet-signin-cancel");
+    if (cancelButton) {
+      cancelButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        cancelSignIn();
+      });
+    }
+  }
+
   global.MetaGraffWallet = {
     setUnityInstance: function (instance) {
       unityInstance = instance;
@@ -336,12 +493,21 @@
     },
     connect: connect,
     disconnect: disconnect,
-    signMessage: signMessage
+    signMessage: signMessage,
+    requestSignIn: requestSignIn,
+    signInWith: signInWith,
+    signOut: signOut,
+    cancelSignIn: cancelSignIn
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindOverlay);
-  } else {
+  function bindAll() {
     bindOverlay();
+    bindSignInModal();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindAll);
+  } else {
+    bindAll();
   }
 })(window);

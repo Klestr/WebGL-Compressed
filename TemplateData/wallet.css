@@ -124,3 +124,64 @@
 .unity-mobile #api-overlay {
   display: flex;
 }
+
+#wallet-signin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 8, 8, 0.72);
+  font-family: Arial, Helvetica, sans-serif;
+  pointer-events: auto;
+}
+
+#wallet-signin-modal[hidden] {
+  display: none;
+}
+
+#wallet-signin-card {
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  background: #111;
+  border: 1px solid #3a3a3a;
+  color: #f2f2f2;
+}
+
+#wallet-signin-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+#wallet-signin-status {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #c8c8c8;
+}
+
+#wallet-signin-card button {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  cursor: pointer;
+  border: 1px solid #3a3a3a;
+  background: #1a1a1a;
+  color: #f2f2f2;
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 10px 12px;
+}
+
+#wallet-signin-phantom,
+#wallet-signin-solflare {
+  background: #f2f2f2;
+  color: #111;
+  border-color: #f2f2f2;
+}
+
+#wallet-signin-cancel {
+  margin-top: 8px;
+  margin-bottom: 0;
+}

@@ -436,6 +436,9 @@
     },
     getAuthToken: function () {
       return lastAuth && lastAuth.token ? lastAuth.token : "";
+    },
+    getLastAuth: function () {
+      return lastAuth;
     }
   };
 
