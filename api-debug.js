@@ -2,6 +2,8 @@
   var LOG = "[GalleryApi]";
   var unityGameObject = "GalleryWalletBridge";
   var lastNonce = null;
+  var lastNonceWallet = "";
+  var lastAuth = null;
 
   function log() {
     var args = Array.prototype.slice.call(arguments);
@@ -31,6 +33,13 @@
     return [
       base + "/api/api/auth/nonce" + query,
       base + "/api/auth/nonce" + query
+    ];
+  }
+
+  function connectUrls(base) {
+    return [
+      base + "/api/api/auth/connect",
+      base + "/api/auth/connect"
     ];
   }
 
@@ -86,6 +95,59 @@
         };
       });
     });
+  }
+
+  function postJson(url, payload) {
+    log("POST", url);
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        return {
+          ok: res.ok,
+          status: res.status,
+          url: url,
+          body: parseBody(text)
+        };
+      });
+    });
+  }
+
+  function nonceStillValid(nonce, wallet) {
+    if (!nonce || !nonce.message || !wallet) return false;
+    if (lastNonceWallet && lastNonceWallet !== wallet) return false;
+    if (nonce.message.indexOf(wallet) === -1) return false;
+    if (!nonce.expiresAt) return true;
+    var expires = Date.parse(nonce.expiresAt);
+    if (isNaN(expires)) return false;
+    return expires - 5000 > Date.now();
+  }
+
+  function previewToken(token) {
+    if (!token || typeof token !== "string") return "";
+    if (token.length <= 24) return token.slice(0, 8) + "…";
+    return token.slice(0, 12) + "…" + token.slice(-6);
+  }
+
+  function summarizeAuth(body) {
+    if (!body || typeof body !== "object") return prettyBody(body);
+    var user = body.user || {};
+    return [
+      "expiresIn: " + (body.expiresIn == null ? "" : body.expiresIn),
+      "user.walletAddress: " + (user.walletAddress || ""),
+      "token: " + previewToken(body.token) + " (kept in memory)"
+    ].join("\n");
+  }
+
+  function errorMessage(err) {
+    if (!err) return "Unknown error";
+    if (err.code === 4001 || err.code === "4001") return "Sign in cancelled";
+    return err.message || err.code ? String(err.message || err.code) : String(err);
   }
 
   function connectedWallet() {
@@ -159,12 +221,14 @@
       var summary = "HTTP " + result.status + " " + result.url + "\n" + prettyBody(result.body);
       if (!result.ok) {
         lastNonce = null;
+        lastNonceWallet = "";
         warn("Nonce failed", result.status, result.body);
         setPanel(summary, "Nonce ✗");
         return result.body;
       }
 
       lastNonce = result.body && typeof result.body === "object" ? result.body : null;
+      lastNonceWallet = lastNonce && lastNonce.message ? pubkey : "";
       log("Nonce result", result.body);
       setPanel(summary, "Nonce ✓");
       return result.body;
@@ -174,10 +238,131 @@
       return handleResult(result, urls.slice(1));
     }).catch(function (err) {
       lastNonce = null;
+      lastNonceWallet = "";
       var message = err && err.message ? err.message : String(err);
       warn("Nonce request failed", message);
       setPanel("Nonce request failed: " + message, "Nonce ✗");
     });
+  }
+
+  function postConnect(wallet, message, signature) {
+    var base = getApiBase();
+    var urls = connectUrls(base);
+    var payload = {
+      wallet: wallet,
+      message: message,
+      signature: signature
+    };
+    setPanel("POST " + urls[0] + " …", "Sign in …");
+
+    function handleResult(result, remaining) {
+      if (shouldTryAlternateNoncePath(result.status) && remaining.length) {
+        var next = remaining[0];
+        log("Connect path 404; trying alternate", next);
+        setPanel("POST " + next + " …", "Sign in …");
+        return postJson(next, payload).then(function (retry) {
+          return handleResult(retry, remaining.slice(1));
+        });
+      }
+
+      if (!result.ok) {
+        lastAuth = null;
+        warn("Connect failed", result.status, result.body);
+        setPanel(
+          "HTTP " + result.status + " " + result.url + "\n" + prettyBody(result.body),
+          "Sign in ✗"
+        );
+        return result.body;
+      }
+
+      lastAuth = result.body && typeof result.body === "object" ? result.body : null;
+      log("Connect result", {
+        expiresIn: lastAuth && lastAuth.expiresIn,
+        user: lastAuth && lastAuth.user,
+        token: previewToken(lastAuth && lastAuth.token)
+      });
+      setPanel(
+        "HTTP " + result.status + " " + result.url + "\n" + summarizeAuth(lastAuth),
+        "Signed in ✓"
+      );
+      return lastAuth;
+    }
+
+    return postJson(urls[0], payload).then(function (result) {
+      return handleResult(result, urls.slice(1));
+    });
+  }
+
+  function connectWithWallet() {
+    var pubkey = connectedWallet();
+    var walletName = global.MetaGraffWallet && typeof global.MetaGraffWallet.getWalletName === "function"
+      ? global.MetaGraffWallet.getWalletName()
+      : "";
+    showPanel();
+    notifyPointerDown();
+    log("Sign in clicked", pubkey || "(no wallet connected)");
+
+    if (!getApiBase()) {
+      warn("API base URL is missing");
+      setPanel("API base URL is missing", "Sign in ✗");
+      return Promise.resolve();
+    }
+
+    if (!pubkey) {
+      warn("Connect a wallet before signing in");
+      setPanel(
+        "Connect Phantom or Solflare first, then Sign in.\nThe connect call needs wallet + signed nonce message.",
+        "Sign in ✗"
+      );
+      return Promise.resolve();
+    }
+
+    if (!global.MetaGraffWallet || typeof global.MetaGraffWallet.signMessage !== "function") {
+      warn("Wallet bridge cannot signMessage");
+      setPanel("Wallet bridge cannot signMessage. Hard-refresh the page.", "Sign in ✗");
+      return Promise.resolve();
+    }
+
+    function signAndPost(nonceBody) {
+      if (!nonceBody || !nonceBody.message) {
+        warn("No nonce message to sign");
+        setPanel("Get nonce first, or wait for a nonce JSON with a message field.", "Sign in ✗");
+        return null;
+      }
+
+      setPanel(
+        "Approve the sign-in message in " + (walletName || "your wallet") + " …",
+        "Sign in …"
+      );
+
+      return global.MetaGraffWallet.signMessage(nonceBody.message).then(function (signature) {
+        log("Message signed", previewToken(signature));
+        return postConnect(pubkey, nonceBody.message, signature).then(function (body) {
+          lastNonce = null;
+          lastNonceWallet = "";
+          return body;
+        });
+      });
+    }
+
+    var noncePromise = nonceStillValid(lastNonce, pubkey)
+      ? Promise.resolve(lastNonce)
+      : fetchNonce(pubkey);
+
+    return noncePromise.then(function (nonceBody) {
+      return signAndPost(nonceBody);
+    }).catch(function (err) {
+      lastAuth = null;
+      var message = errorMessage(err);
+      warn("Sign in failed", message);
+      setPanel("Sign in failed: " + message, "Sign in ✗");
+    });
+  }
+
+  function clearAuth() {
+    lastAuth = null;
+    lastNonce = null;
+    lastNonceWallet = "";
   }
 
   function bindOverlay() {
@@ -217,14 +402,28 @@
       });
     }
 
+    var connectButton = document.getElementById("api-run-connect");
+    if (connectButton) {
+      connectButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        connectWithWallet();
+      });
+    }
+
     runHealthCheck();
   }
 
   global.MetaGraffApi = {
     runHealthCheck: runHealthCheck,
     fetchNonce: fetchNonce,
+    connectWithWallet: connectWithWallet,
+    clearAuth: clearAuth,
     getLastNonce: function () {
       return lastNonce;
+    },
+    getAuthToken: function () {
+      return lastAuth && lastAuth.token ? lastAuth.token : "";
     }
   };
 

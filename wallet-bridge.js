@@ -99,6 +99,79 @@
     if (previous) log("Disconnected", reason || "");
     sendToUnity("OnWalletDisconnected", reason || "");
     updateOverlay();
+    if (global.MetaGraffApi && typeof global.MetaGraffApi.clearAuth === "function") {
+      global.MetaGraffApi.clearAuth();
+    }
+  }
+
+  var BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+  function bytesToBase58(bytes) {
+    if (!bytes || !bytes.length) return "";
+    var digits = [0];
+    for (var i = 0; i < bytes.length; i++) {
+      var carry = bytes[i];
+      for (var j = 0; j < digits.length; j++) {
+        carry += digits[j] << 8;
+        digits[j] = carry % 58;
+        carry = (carry / 58) | 0;
+      }
+      while (carry > 0) {
+        digits.push(carry % 58);
+        carry = (carry / 58) | 0;
+      }
+    }
+    var zeros = 0;
+    while (zeros < bytes.length && bytes[zeros] === 0) zeros += 1;
+    var out = "";
+    for (var z = 0; z < zeros; z++) out += "1";
+    for (var k = digits.length - 1; k >= 0; k--) out += BASE58_ALPHABET[digits[k]];
+    return out;
+  }
+
+  function encodeUtf8(text) {
+    if (global.TextEncoder) return new TextEncoder().encode(String(text));
+    var encoded = unescape(encodeURIComponent(String(text)));
+    var bytes = new Uint8Array(encoded.length);
+    for (var i = 0; i < encoded.length; i++) bytes[i] = encoded.charCodeAt(i);
+    return bytes;
+  }
+
+  function toUint8Array(value) {
+    if (!value) return null;
+    if (value instanceof Uint8Array) return value;
+    if (typeof value === "string") return null;
+    if (Array.isArray(value)) return new Uint8Array(value);
+    if (value.type === "Buffer" && Array.isArray(value.data)) return new Uint8Array(value.data);
+    if (ArrayBuffer.isView(value)) {
+      return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+    if (value.signature) return toUint8Array(value.signature);
+    return null;
+  }
+
+  function signMessage(message) {
+    var walletName = connected.walletName;
+    var provider = getProvider(walletName);
+    if (!provider) {
+      return Promise.reject(new Error("Connect a wallet before signing"));
+    }
+    if (typeof provider.signMessage !== "function") {
+      return Promise.reject(new Error(walletName + " does not support signMessage"));
+    }
+
+    notifyPointerDown();
+    var bytes = encodeUtf8(message);
+    log("Requesting signMessage", walletName);
+
+    return Promise.resolve(provider.signMessage(bytes, "utf8")).then(function (result) {
+      if (typeof result === "string" && result.length) return result;
+      var signatureBytes = toUint8Array(result);
+      if (!signatureBytes || !signatureBytes.length) {
+        throw new Error("Wallet returned an empty signature");
+      }
+      return bytesToBase58(signatureBytes);
+    });
   }
 
   function listenProvider(walletName, provider) {
@@ -262,7 +335,8 @@
       return connected.walletName || "";
     },
     connect: connect,
-    disconnect: disconnect
+    disconnect: disconnect,
+    signMessage: signMessage
   };
 
   if (document.readyState === "loading") {

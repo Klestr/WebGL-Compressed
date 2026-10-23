@@ -21,6 +21,7 @@
 #wallet-chip,
 #api-chip,
 #api-run-nonce,
+#api-run-connect,
 #wallet-panel button,
 #api-panel button {
   cursor: pointer;
@@ -34,11 +35,13 @@
 
 #wallet-chip,
 #api-chip,
-#api-run-nonce {
+#api-run-nonce,
+#api-run-connect {
   min-width: 132px;
 }
 
-#api-run-nonce {
+#api-run-nonce,
+#api-run-connect {
   margin-left: 6px;
 }
 
