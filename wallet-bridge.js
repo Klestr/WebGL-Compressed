@@ -87,6 +87,9 @@
       publicKey: publicKey
     }));
     updateOverlay();
+    if (global.MetaGraffApi && typeof global.MetaGraffApi.fetchNonce === "function") {
+      global.MetaGraffApi.fetchNonce(publicKey);
+    }
   }
 
   function setDisconnected(reason) {
@@ -251,6 +254,12 @@
       if (name) unityGameObject = name;
       log("Unity game object registered", unityGameObject);
       if (unityInstance || global.unityInstance) tryEagerConnect();
+    },
+    getPublicKey: function () {
+      return connected.publicKey || "";
+    },
+    getWalletName: function () {
+      return connected.walletName || "";
     },
     connect: connect,
     disconnect: disconnect
