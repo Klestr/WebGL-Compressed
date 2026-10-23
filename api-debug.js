@@ -43,11 +43,22 @@
     ];
   }
 
+  function setSignInLabel(label) {
+    var button = document.getElementById("api-run-connect");
+    if (button) button.textContent = label || "Sign in";
+  }
+
   function setPanel(text, chipLabel) {
     var node = document.getElementById("api-log");
     if (node) node.textContent = text;
-    var chip = document.getElementById("api-chip-label");
-    if (chip && chipLabel) chip.textContent = chipLabel;
+    if (!chipLabel) return;
+    if (chipLabel.indexOf("API health") === 0) {
+      var chip = document.getElementById("api-chip-label");
+      if (chip) chip.textContent = chipLabel;
+      return;
+    }
+    if (chipLabel === "Signed in ✓") setSignInLabel("Signed in");
+    else if (chipLabel.indexOf("Sign in") === 0) setSignInLabel("Sign in");
   }
 
   function notifyPointerDown() {
@@ -363,6 +374,7 @@
     lastAuth = null;
     lastNonce = null;
     lastNonceWallet = "";
+    setSignInLabel("Sign in");
   }
 
   function bindOverlay() {

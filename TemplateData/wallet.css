@@ -6,16 +6,64 @@
 #unity-footer {
   position: relative;
   z-index: 30;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   min-height: 38px;
+  box-sizing: border-box;
+  padding: 0 6px 0 0;
+}
+
+#unity-logo-title-footer,
+#unity-fullscreen-button,
+#unity-build-title,
+#wallet-overlay,
+#api-overlay {
+  float: none;
+}
+
+#unity-logo-title-footer {
+  order: 0;
+  flex: 0 0 102px;
+}
+
+#unity-build-title {
+  order: 1;
+  flex: 1 1 72px;
+  min-width: 0;
+  margin-right: 0;
+  font-size: 13px;
+  line-height: 38px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#wallet-overlay {
+  order: 2;
+}
+
+#api-overlay {
+  order: 3;
+}
+
+#unity-fullscreen-button {
+  order: 4;
+  flex: 0 0 38px;
 }
 
 #wallet-overlay,
 #api-overlay {
-  float: right;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   position: relative;
-  margin: 4px 10px 0 0;
+  margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   z-index: 10000;
+  pointer-events: auto;
 }
 
 #wallet-chip,
@@ -30,27 +78,17 @@
   color: #f2f2f2;
   font-size: 12px;
   line-height: 1.2;
-  padding: 6px 10px;
-}
-
-#wallet-chip,
-#api-chip,
-#api-run-nonce,
-#api-run-connect {
-  min-width: 132px;
-}
-
-#api-run-nonce,
-#api-run-connect {
-  margin-left: 6px;
+  padding: 5px 8px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 #wallet-panel,
 #api-panel {
   position: absolute;
   right: 0;
-  top: 36px;
-  bottom: auto;
+  bottom: calc(100% + 6px);
+  top: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -59,6 +97,7 @@
   background: #111;
   border: 1px solid #3a3a3a;
   z-index: 10001;
+  pointer-events: auto;
 }
 
 #api-panel {
@@ -83,20 +122,5 @@
 
 .unity-mobile #wallet-overlay,
 .unity-mobile #api-overlay {
-  display: block;
-  float: none;
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  margin: 0;
-}
-
-.unity-mobile #api-overlay {
-  top: 48px;
-}
-
-.unity-mobile #wallet-panel,
-.unity-mobile #api-panel {
-  bottom: auto;
-  top: 36px;
+  display: flex;
 }
