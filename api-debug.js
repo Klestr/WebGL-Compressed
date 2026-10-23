@@ -42,9 +42,17 @@
   }
 
   function notifyPointerDown() {
+    if (global.document && typeof global.document.exitPointerLock === "function") {
+      global.document.exitPointerLock();
+    }
     var instance = global.unityInstance;
     if (!instance || typeof instance.SendMessage !== "function") return;
     instance.SendMessage(unityGameObject, "OnWalletUiPointerDown", "");
+  }
+
+  function showPanel() {
+    var panel = document.getElementById("api-panel");
+    if (panel) panel.hidden = false;
   }
 
   function parseBody(text) {
@@ -117,6 +125,8 @@
   function fetchNonce(wallet) {
     var pubkey = wallet || connectedWallet();
     var base = getApiBase();
+    showPanel();
+    log("Get nonce clicked", pubkey || "(no wallet connected)");
 
     if (!base) {
       warn("API base URL is missing");
