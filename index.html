@@ -7,6 +7,7 @@
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <link rel="stylesheet" href="TemplateData/wallet.css">
+    <script src="pointer-lock.js"></script>
     <script src="api-config.js"></script>
     <script src="api-debug.js"></script>
     <script src="wallet-bridge.js"></script>
@@ -14,6 +15,7 @@
   <body>
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <div id="pointer-hint">Click the gallery to look around. Esc frees the mouse.</div>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -67,6 +69,10 @@
       // way that non-critical warnings and error messages are presented to the
       // user.
       function unityShowBanner(msg, type) {
+        if (/pointer lock/i.test(String(msg))) {
+          console.warn("[GalleryPointer]", msg);
+          return;
+        }
         var warningBanner = document.querySelector("#unity-warning");
         function updateBannerVisibility() {
           warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
@@ -123,6 +129,9 @@
               }).then((unityInstance) => {
                 document.querySelector("#unity-loading-bar").style.display = "none";
                 window.unityInstance = unityInstance;
+                if (window.MetaGraffPointer) {
+                  window.MetaGraffPointer.attachCanvas();
+                }
                 if (window.MetaGraffWallet) {
                   window.MetaGraffWallet.setUnityInstance(unityInstance);
                 }
@@ -131,6 +140,10 @@
                 };
 
               }).catch((message) => {
+                if (/pointer lock/i.test(String(message))) {
+                  console.warn("[GalleryPointer]", message);
+                  return;
+                }
                 alert(message);
               });
             };

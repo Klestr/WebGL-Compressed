@@ -62,6 +62,12 @@
   }
 
   function notifyPointerDown() {
+    if (global.MetaGraffPointer && typeof global.MetaGraffPointer.suppressRelock === "function") {
+      global.MetaGraffPointer.suppressRelock(1200);
+      if (typeof global.MetaGraffPointer.restoreCursor === "function") {
+        global.MetaGraffPointer.restoreCursor();
+      }
+    }
     if (global.document && typeof global.document.exitPointerLock === "function") {
       global.document.exitPointerLock();
     }
